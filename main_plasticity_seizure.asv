@@ -1,0 +1,331 @@
+clearvars
+clear -all
+clc
+
+
+%% ---------------------------------
+% ---------- Run Parameters --------
+duration =  3*1000; %ms
+step = 0.5; %ms
+N_E = 500; 
+
+% applied external current to initiate the seizure
+Iapp = 200;
+
+% ---------------------------------
+% ---------------------------------
+
+%%
+% ---------------------------------------
+% ------ FTSTS pulse parameters --------
+pulse_width = 1; %ms
+pulse_interval = 10; %ms
+pulse_amplitude = 3*1000; %ms
+pulse_phase_dif = 0*3.14;% radians
+aE = -1; % polarity
+aI = 1;  % polarity
+% ---------------------------------------
+% ---------------------------------------
+
+
+%%
+
+% network parameters 
+C = 100; % x
+g_L = 4; % x
+E_L = -57; % x   
+E_E = 0;  % x
+E_K = -90;  % x
+f0 = 0.002;  
+beta = 1.5;   % 
+tau_ref = 5;  % x
+tau_E = 15;  % x
+tau_I = 15;  % x
+tau_phi = 100;  % x
+phi_0 = -55;  % x
+delta_phi = 2.5;  % x
+tau_Cl = 5*1000;   % x
+V_d = 0.2357;   % x   
+Cl_ineq = 6; % x
+Cl_out = 110;  % x
+tau_K = 5*1000;  % x
+delta_K = 40;  % x
+sigma_E = 0.02; % x
+sigma_I = 0.03;  % x
+tau_STDP = 15; % x
+F = 96500; %  x
+fmax = 1/(5);  %  x
+
+eta = 1*10^-3;% had this before 0.2; 
+a_LTP = 1;
+a_LTD = -1*a_LTP;
+
+
+
+
+x0(1) = C;
+x0(2) = g_L;
+x0(3) = E_L ;
+x0(4) = E_E;
+x0(5) = E_K ;
+x0(6) = f0 ;
+x0(7) = beta ;
+x0(8) = tau_ref ;
+x0(9) = tau_E;
+x0(10) = tau_I;
+x0(11) = tau_phi;
+x0(12) = phi_0 ;
+x0(13) = delta_phi ;
+x0(14) = tau_Cl ;
+x0(15) = V_d ;
+x0(16) = Cl_ineq ;
+x0(17) = Cl_out ;
+x0(18) = tau_K ;
+x0(19) = delta_K ;
+x0(20) = sigma_E ;
+x0(21) = sigma_I ;
+x0(22) = tau_STDP ;
+x0(23) = F ;
+x0(24) = fmax ;
+x0(25) = eta ;
+x0(26) = a_LTP ;
+x0(27) = a_LTD ;
+
+
+
+% noise parameters
+sigma_current = 20;    % unit: pA
+tau_x_current = 200; % spatial constant unit: neuron index
+tau_t_current = 15; % time unit: ms
+
+PN(1) = sigma_current;
+PN(2) = tau_x_current;
+PN(3) = tau_t_current;
+
+% ICs
+V0 = -67;
+IC =  zeros(N_E,18);
+IC(:,1) = V0;
+IC(:,2) = Cl_ineq;
+IC(:,3) = 0;
+IC(:,4) = -55;
+IC(:,5) = 0;
+IC(:,6) = 0;
+IC(:,7) = 0;
+IC(:,8) = 0;
+IC(:,9) = 0;
+IC(:,10) = -67;
+IC(:,11) = Cl_ineq;
+IC(:,12) = 0;
+IC(:,13) = -55;
+IC(:,14)  = 0;
+IC(:,15)  = 0;
+IC(:,16)  = 0;
+IC(:,17)  = 0;
+IC(:,18)  = 0;
+
+
+
+% weight matrix
+[W_EE, W_EI, W_IE, W_II] = make_weights(sigma_E,sigma_I,N_E);
+
+
+
+
+W0 = ones(N_E,N_E);
+
+% FTSTS parameter to pass to model
+FTSTS(1) = pulse_width;
+FTSTS(2) = pulse_interval;
+FTSTS(3) = pulse_amplitude;
+FTSTS(4) = pulse_phase_dif;
+FTSTS(5) = aE;
+FTSTS(6) = aI;
+
+
+
+%%
+
+
+% run
+tic
+[R_t,R_spE,R_spI,R_V,R_Vi,R_s_E,R_s_I,R_Cl_in,R_W,W,R_W2,Wee] = model_seizure(duration,step,N_E,x0,W_EE, W_EI, W_IE, W_II,PN,IC,Iapp,W0,FTSTS);
+toc
+
+
+
+
+%% plots
+
+
+seizure_prop = [9.914774800056124, N_E*0.675274776670876
+9.959772695383752, N_E*0.32281464851971364
+5.800687526308405, N_E*0.6143725737804593
+5.73346429072541, N_E*0.3878794256582947
+2.9966325242037324, N_E*0.5689701136523081
+3.01334362284271, N_E*0.41905430054721476];
+
+
+% figure(31)
+% plot(R_t/1000,R_spI','r.',R_t/1000,R_spE','k.','MarkerSize',2)
+% hold on
+% plot(seizure_prop(:,1)+1,seizure_prop(:,2),'gs',[0,duration/1000],[0.6*N_E,0.6*N_E],'b--','LineWidth',2,'MarkerSize',3)
+% ylim([0.9,N_E+0.1])
+% ylabel('Neuron Index of E Population')
+% xlabel('Time (ms)')
+% xlim([0,duration/1000])
+
+figure(32)
+plot(R_t/1000,R_spE','k.','MarkerSize',2)
+% hold on
+% plot(seizure_prop(:,1)+1,seizure_prop(:,2),'gs',[0,duration/1000],[0.6*N_E,0.6*N_E],'b--','LineWidth',2,'MarkerSize',3)
+ylim([0.9,N_E+0.1])
+ylabel('Neuron Index of E Population')
+xlabel('Time (ms)')
+xlim([0,150])
+%
+
+
+
+%%
+
+% R_spEa = R_spE(:,1:300000);
+% R_spEb = R_spE(:,300001:600000);
+% 
+% R_spIa = R_spI(:,1:300000);
+% R_spIb = R_spI(:,300001:600000);
+% % 
+% save('spike_E_A2_110_incW.mat','R_spE')
+% % save('spike_E_A2_100_long500b.mat','R_spEb')
+% save('spike_I_A2_110_incW.mat','R_spI')
+% % save('spike_I_A2_100_long500b.mat','R_spIb')
+% save('weight_A2_110_incW.mat','R_W')
+% save('weightee_A2_110_incW.mat','R_W2')
+% save('weight_500_110_incW.mat','W')
+% save('weightee_500_110_incW.mat','Wee')
+
+
+
+%%
+% ---------------------------
+%  --- LFP Generation ----
+W_space = zeros(1,N_E);
+
+ref_j = 0.6*N_E;
+sigma_spac = 0.025;
+for i = 1:N_E
+      W_space(1,i) = normpdf(abs(i-ref_j),0,(sigma_spac*N_E)^1); 
+end
+
+g_E = R_s_E;
+g_I = R_s_I;
+E_Cl = -26.7*log(Cl_out./R_Cl_in);
+IE = g_E./fmax.*(E_E - R_V) ;
+II = g_I./fmax.*(E_Cl - R_V);
+
+LFP = W_space*(IE(:,7:end) - 1.65*II(:,1:end-6));
+
+
+
+figure(32)
+plot(R_t(:,1:end-6)./1000,-LFP,'Color',[0.4660, 0.6740, 0.1880],'LineWidth',1)
+xlabel('Time (sec)')
+ylabel('LFP (a.u.)')
+xlim([0,duration/1000])
+ylim([1.2*min(-LFP),1.2*max(-LFP)])
+
+%%
+% 
+ts = [20:20:duration]./1000;
+
+figure(2)
+subplot(2,1,1)
+plot(ts,R_W)
+% legend('E-to-I','E-to-E')
+title('E-to-I')
+xlim([0,duration/1000])
+xlabel('Time (sec)')
+ylabel('Neuron Index')
+
+subplot(2,1,2)
+plot(ts,R_W2)
+title('E-to-E')
+% legend('E-to-I','E-to-E')
+xlim([0,duration/1000])
+xlabel('Time (sec)')
+ylabel('Neuron Index')
+
+
+% save('W_EE_t_noseizure.mat','R_W')
+% save('W_EI_t_noseizure.mat','R_W2')
+%%
+
+
+tw = [duration-1000*step+step:step:duration];
+% 
+% figure(4)
+% subplot(2,1,1)
+% plot(tw'/1000,squeeze(W(3,1:5,:)))
+% legend('to 1','to 2','to 3','to 4','to 5')
+% % legend('E-to-I','E-to-E')
+% title('E-to-I')
+% % xlim([0,duration/1000])
+% xlabel('Time (sec)')
+% ylabel('Neuron Index')
+% 
+% subplot(2,1,2)
+% plot(tw'/1000,squeeze(Wee(3,1:5,:)))
+% legend('to 1','to 2','to 3','to 4','to 5')
+% title('E-to-E')
+% % legend('E-to-I','E-to-E')
+% % xlim([0,duration/1000])
+% xlabel('Time (sec)')
+% ylabel('Neuron Index')
+
+%%
+
+
+
+% figure(6)
+% subplot(2,1,1)
+% plot(R_t,R_spE,'k.',R_t,R_spI,'r.','MarkerSize',7)
+% ylim([0.9,N_E+0.1])
+% xlim([0,duration/1000])
+% xlim([(duration-500),duration])
+% xlim([9650,9800])
+
+% subplot(2,1,2)
+% plot(R_t/1000,R_spI,'r.','MarkerSize',2)
+% ylim([0.9,N_E+0.1])
+% % xlim([0,duration/1000])
+% xlim([4,5])
+
+% Ratio = mean((sum(R_spE,1)./N_E)/(sum(R_spI,1)./N_E))
+
+%%
+
+figure(4)
+colormap('jet');   % set colormap
+imagesc(W_EE.*Wee-W_EE);        % draw image and scale colormap to values range
+colorbar;
+title('Percent Change in Weight (\DeltaW_{ee})')
+ylabel('Excitatory Neuron Index')
+xlabel('Excitatory Neuron Index')
+
+% figure(5)
+% colormap('jet');   % set colormap
+% imagesc(W_EI.*W-W_EI);        % draw image and scale colormap to values range
+% colorbar;
+% title('Percent Change in Weight (\DeltaW_{ei})')
+% % 
+figure(5)
+colormap('jet');   % set colormap
+imagesc(W_EI.*W-W_EI);        % draw image and scale colormap to values range
+colorbar;
+title('Change in Conductance')
+xlabel('Inhibitory Neuron Index')
+ylabel('Excitatory Neuron Index')
+% weight_500_1227 = W;
+
+% save('W_EE_noseizure.mat','Wee')
+% save('W_EI_noseizure.mat','W')
